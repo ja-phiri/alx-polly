@@ -1,36 +1,177 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PollMaster - Next.js Polling Application
 
-## Getting Started
+A modern polling application built with Next.js 14, TypeScript, and Shadcn UI components.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **User Authentication**: Secure login and registration system
+- **Poll Management**: Create, view, and manage polls
+- **Voting System**: Vote on polls with real-time updates
+- **Responsive Design**: Modern UI that works on all devices
+- **Type Safety**: Full TypeScript support throughout the application
+
+## 📁 Project Structure
+
+```
+alx-polly/
+├── app/                          # Next.js App Router
+│   ├── (auth)/                   # Authentication routes (grouped)
+│   │   ├── login/                # Login page
+│   │   └── register/             # Registration page
+│   ├── api/                      # API routes
+│   │   ├── auth/                 # Authentication API endpoints
+│   │   │   ├── login/            # POST /api/auth/login
+│   │   │   └── register/         # POST /api/auth/register
+│   │   └── polls/                # Polls API endpoints
+│   │       ├── route.ts          # GET/POST /api/polls
+│   │       └── [id]/             # Individual poll operations
+│   │           ├── route.ts      # GET /api/polls/[id]
+│   │           └── vote/         # POST /api/polls/[id]/vote
+│   ├── dashboard/                # User dashboard
+│   ├── polls/                    # Polls pages
+│   │   ├── page.tsx              # Polls listing
+│   │   ├── create/               # Create new poll
+│   │   └── [id]/                 # Individual poll view
+│   ├── globals.css               # Global styles
+│   ├── layout.tsx                # Root layout
+│   └── page.tsx                  # Home page
+├── components/                   # React components
+│   ├── ui/                       # Shadcn UI components
+│   ├── auth/                     # Authentication components
+│   │   ├── login-form.tsx        # Login form
+│   │   └── register-form.tsx     # Registration form
+│   ├── polls/                    # Poll-related components
+│   │   ├── polls-list.tsx        # Polls listing component
+│   │   ├── poll-view.tsx         # Individual poll view
+│   │   └── create-poll-form.tsx  # Create poll form
+│   ├── dashboard/                # Dashboard components
+│   ├── navigation.tsx            # Main navigation
+│   ├── protected-route.tsx       # Route protection component
+│   └── providers.tsx             # Context providers
+├── hooks/                        # Custom React hooks
+│   ├── use-auth.ts               # Authentication hook
+│   └── use-polls.ts              # Polls management hook
+├── lib/                          # Utility libraries
+│   ├── types/                    # TypeScript type definitions
+│   │   └── index.ts              # Main types file
+│   ├── auth/                     # Authentication utilities
+│   │   └── auth-utils.ts         # Auth helper functions
+│   ├── db/                       # Database utilities
+│   │   └── db-utils.ts           # Database operations
+│   └── utils.ts                  # General utilities
+├── public/                       # Static assets
+└── package.json                  # Dependencies and scripts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Technology Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Shadcn UI
+- **Icons**: Lucide React
+- **State Management**: React Context + Custom Hooks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Getting Started
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js 18+ 
+- npm or yarn
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd alx-polly
+```
 
-## Deploy on Vercel
+2. Install dependencies:
+```bash
+npm install
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Run the development server:
+```bash
+npm run dev
+```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📋 Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+```env
+# Database (for future implementation)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=polling_app
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Authentication (for future implementation)
+JWT_SECRET=your_jwt_secret
+NEXTAUTH_SECRET=your_nextauth_secret
+NEXTAUTH_URL=http://localhost:3000
+```
+
+## 🔧 Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript type checking
+
+## 🏗️ Architecture Overview
+
+### Authentication Flow
+1. User registers/logs in via `/login` or `/register`
+2. Authentication state is managed via `useAuth` hook
+3. Protected routes use `ProtectedRoute` component
+4. JWT tokens are stored in localStorage (for development)
+
+### Poll Management
+1. Users can browse polls at `/polls`
+2. Authenticated users can create polls at `/polls/create`
+3. Users can vote on polls via API endpoints
+4. Real-time updates using custom hooks
+
+### API Structure
+- RESTful API design with Next.js API routes
+- Consistent error handling and response format
+- Type-safe request/response handling
+- Placeholder implementations ready for database integration
+
+## 🔮 Future Enhancements
+
+- [ ] Database integration (PostgreSQL/Prisma)
+- [ ] Real-time voting with WebSockets
+- [ ] Poll analytics and charts
+- [ ] Email notifications
+- [ ] Social sharing features
+- [ ] Advanced poll types (ranked choice, etc.)
+- [ ] Mobile app (React Native)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For support, please open an issue in the GitHub repository or contact the development team.
