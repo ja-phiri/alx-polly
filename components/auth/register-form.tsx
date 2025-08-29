@@ -1,24 +1,50 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Icons } from "@/components/ui/icons"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 interface RegisterFormProps extends React.ComponentProps<typeof Card> {}
 
 export function RegisterForm({ className, ...props }: RegisterFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const [name, setName] = React.useState("")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [confirmPassword, setConfirmPassword] = React.useState("")
+  const { signUp } = useAuth()
+  const router = useRouter()
 
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault()
     setIsLoading(true)
 
-    setTimeout(() => {
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match")
       setIsLoading(false)
-    }, 3000)
+      return
+    }
+
+    try {
+      const { error } = await signUp(email, password, name)
+      
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success("Account created successfully! Please check your email to verify your account.")
+        router.push("/login")
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -38,7 +64,10 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
                 id="name"
                 type="text"
                 placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <div className="grid gap-2">
@@ -47,7 +76,10 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
                 id="email"
                 type="email"
                 placeholder="m@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <div className="grid gap-2">
@@ -55,7 +87,10 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
               <Input
                 id="password"
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <div className="grid gap-2">
@@ -63,7 +98,10 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
               <Input
                 id="confirmPassword"
                 type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <Button disabled={isLoading}>

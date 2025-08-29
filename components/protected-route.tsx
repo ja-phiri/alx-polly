@@ -1,26 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: React.ReactNode
+  fallback?: React.ReactNode
 }
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+    if (!loading && !user) {
+      router.push('/login')
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [user, loading, router])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center space-x-2">
@@ -28,10 +28,10 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
           <span>Loading...</span>
         </div>
       </div>
-    );
+    )
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -39,8 +39,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
           <p className="text-muted-foreground">Please log in to access this page.</p>
         </div>
       </div>
-    );
+    )
   }
 
-  return <>{children}</>;
+  return <>{children}</>
 }

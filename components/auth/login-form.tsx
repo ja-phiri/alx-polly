@@ -1,24 +1,42 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Icons } from "@/components/ui/icons"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "sonner"
 
 interface LoginFormProps extends React.ComponentProps<typeof Card> {}
 
 export function LoginForm({ className, ...props }: LoginFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const { signIn } = useAuth()
+  const router = useRouter()
 
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault()
     setIsLoading(true)
 
-    setTimeout(() => {
+    try {
+      const { error } = await signIn(email, password)
+      
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success("Successfully signed in!")
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred")
+    } finally {
       setIsLoading(false)
-    }, 3000)
+    }
   }
 
   return (
@@ -38,7 +56,10 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 id="email"
                 type="email"
                 placeholder="m@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <div className="grid gap-2">
@@ -46,7 +67,10 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
               <Input
                 id="password"
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                required
               />
             </div>
             <Button disabled={isLoading}>
