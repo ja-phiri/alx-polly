@@ -1,4 +1,4 @@
-# PollMaster - Next.js Polling Application
+# alx-polly - Next.js Polling Application
 
 A modern polling application built with Next.js 14, TypeScript, and Shadcn UI components.
 
