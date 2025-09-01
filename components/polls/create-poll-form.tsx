@@ -1,19 +1,30 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Icons } from "@/components/ui/icons"
 import { Plus, X } from "lucide-react"
+import { toast } from "sonner"
+import { CreatePollData, ApiResponse } from "@/lib/types"
 
 interface CreatePollFormProps extends React.ComponentProps<typeof Card> {}
 
 export function CreatePollForm({ className, ...props }: CreatePollFormProps) {
+  const router = useRouter()
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const [formData, setFormData] = React.useState({
+    title: "",
+    description: "",
+    isPublic: true,
+    allowMultipleVotes: false,
+    expiresAt: "",
+  })
   const [options, setOptions] = React.useState<string[]>(["", ""])
 
   const addOption = () => {
@@ -32,14 +43,67 @@ export function CreatePollForm({ className, ...props }: CreatePollFormProps) {
     setOptions(newOptions)
   }
 
+  const updateFormData = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
   async function onSubmit(event: React.SyntheticEvent) {
     event.preventDefault()
     setIsLoading(true)
 
-    // TODO: Implement poll creation logic
-    setTimeout(() => {
+    try {
+      // Validate form data
+      if (!formData.title.trim()) {
+        toast.error("Poll title is required")
+        return
+      }
+
+      const validOptions = options.filter(option => option.trim().length > 0)
+      if (validOptions.length < 2) {
+        toast.error("At least 2 options are required")
+        return
+      }
+
+      // Prepare poll data
+      const pollData: CreatePollData = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        isPublic: formData.isPublic,
+        allowMultipleVotes: formData.allowMultipleVotes,
+        expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : undefined,
+        options: validOptions,
+      }
+
+      // Submit to API
+      const response = await fetch('/api/polls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pollData),
+      })
+
+      const result: ApiResponse = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create poll')
+      }
+
+      if (result.success && result.data?.poll) {
+        toast.success("Poll created successfully!")
+        router.push('/polls')
+      } else {
+        throw new Error(result.error || 'Failed to create poll')
+      }
+    } catch (error) {
+      console.error('Error creating poll:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to create poll')
+    } finally {
       setIsLoading(false)
-    }, 3000)
+    }
   }
 
   return (
@@ -53,10 +117,12 @@ export function CreatePollForm({ className, ...props }: CreatePollFormProps) {
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Poll Title</Label>
+            <Label htmlFor="title">Poll Title *</Label>
             <Input
               id="title"
               placeholder="What's your favorite programming language?"
+              value={formData.title}
+              onChange={(e) => updateFormData('title', e.target.value)}
               disabled={isLoading}
               required
             />
@@ -67,29 +133,47 @@ export function CreatePollForm({ className, ...props }: CreatePollFormProps) {
             <Textarea
               id="description"
               placeholder="Provide more context about your poll..."
+              value={formData.description}
+              onChange={(e) => updateFormData('description', e.target.value)}
               disabled={isLoading}
               rows={3}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select disabled={isLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="technology">Technology</SelectItem>
-                <SelectItem value="food">Food</SelectItem>
-                <SelectItem value="work">Work</SelectItem>
-                <SelectItem value="entertainment">Entertainment</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="isPublic">Public Poll</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow anyone to view and vote on this poll
+                </p>
+              </div>
+              <Switch
+                id="isPublic"
+                checked={formData.isPublic}
+                onCheckedChange={(checked) => updateFormData('isPublic', checked)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="allowMultipleVotes">Allow Multiple Votes</Label>
+                <p className="text-sm text-muted-foreground">
+                  Let users vote for multiple options
+                </p>
+              </div>
+              <Switch
+                id="allowMultipleVotes"
+                checked={formData.allowMultipleVotes}
+                onCheckedChange={(checked) => updateFormData('allowMultipleVotes', checked)}
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Poll Options</Label>
+            <Label>Poll Options *</Label>
             <div className="space-y-3">
               {options.map((option, index) => (
                 <div key={index} className="flex gap-2">
@@ -127,12 +211,17 @@ export function CreatePollForm({ className, ...props }: CreatePollFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endDate">End Date (Optional)</Label>
+            <Label htmlFor="expiresAt">End Date (Optional)</Label>
             <Input
-              id="endDate"
+              id="expiresAt"
               type="datetime-local"
+              value={formData.expiresAt}
+              onChange={(e) => updateFormData('expiresAt', e.target.value)}
               disabled={isLoading}
             />
+            <p className="text-sm text-muted-foreground">
+              Leave empty to keep the poll open indefinitely
+            </p>
           </div>
 
           <Button type="submit" disabled={isLoading} className="w-full">

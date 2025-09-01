@@ -1,52 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Poll, CreatePollData, ApiResponse } from '@/lib/types';
-import { getAuthHeaders } from '@/lib/auth/auth-utils';
+import { CreatePollData, ApiResponse, PollSummary } from '@/lib/types';
+import { db } from '@/lib/db/supabase-utils';
+import { createServerClient } from '@supabase/ssr';
 
 // GET /api/polls - List all polls
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Implement actual database query
-    // This is a placeholder that should be replaced with real database operations
-    
-    const mockPolls: Poll[] = [
-      {
-        id: '1',
-        title: 'What\'s your favorite programming language?',
-        description: 'Choose your preferred programming language for web development',
-        isActive: true,
-        isPublic: true,
-        allowMultipleVotes: false,
-        createdBy: '1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        totalVotes: 15,
-        options: [
-          { id: '1', text: 'JavaScript', votes: 8, pollId: '1', createdAt: new Date() },
-          { id: '2', text: 'TypeScript', votes: 5, pollId: '1', createdAt: new Date() },
-          { id: '3', text: 'Python', votes: 2, pollId: '1', createdAt: new Date() },
-        ],
-      },
-      {
-        id: '2',
-        title: 'Best framework for React?',
-        description: 'Which framework do you prefer for building React applications?',
-        isActive: true,
-        isPublic: true,
-        allowMultipleVotes: true,
-        createdBy: '1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        totalVotes: 12,
-        options: [
-          { id: '4', text: 'Next.js', votes: 7, pollId: '2', createdAt: new Date() },
-          { id: '5', text: 'Gatsby', votes: 3, pollId: '2', createdAt: new Date() },
-          { id: '6', text: 'Remix', votes: 2, pollId: '2', createdAt: new Date() },
-        ],
-      },
-    ];
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const publicOnly = searchParams.get('public') === 'true';
+
+    let polls: PollSummary[];
+
+    if (publicOnly) {
+      polls = await db.polls.getPublicPolls(limit, offset);
+    } else {
+      polls = await db.polls.getAll(limit, offset);
+    }
 
     return NextResponse.json(
-      { success: true, data: { polls: mockPolls } } as ApiResponse<{ polls: Poll[] }>,
+      { success: true, data: { polls } } as ApiResponse<{ polls: PollSummary[] }>,
       { status: 200 }
     );
   } catch (error) {
@@ -61,6 +35,31 @@ export async function GET(request: NextRequest) {
 // POST /api/polls - Create a new poll
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            // This will be handled by the response
+          },
+        },
+      }
+    );
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
     const body: CreatePollData = await request.json();
     const { title, description, isPublic, allowMultipleVotes, expiresAt, options } = body;
 
@@ -72,33 +71,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual authentication check
-    // TODO: Implement actual database operation
+    // Filter out empty options
+    const validOptions = options.filter(option => option.trim().length > 0);
+    
+    if (validOptions.length < 2) {
+      return NextResponse.json(
+        { success: false, error: 'At least 2 valid options are required' } as ApiResponse,
+        { status: 400 }
+      );
+    }
 
-    // Mock successful response
-    const mockPoll: Poll = {
-      id: Date.now().toString(),
-      title,
-      description,
-      isActive: true,
+    // Create poll with valid options
+    const pollData = {
+      title: title.trim(),
+      description: description?.trim(),
       isPublic,
       allowMultipleVotes,
       expiresAt,
-      createdBy: '1', // TODO: Get from authenticated user
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      totalVotes: 0,
-      options: options.map((text, index) => ({
-        id: (Date.now() + index).toString(),
-        text,
-        votes: 0,
-        pollId: Date.now().toString(),
-        createdAt: new Date(),
-      })),
+      options: validOptions,
     };
 
+    const poll = await db.polls.create(pollData, user.id, supabase);
+
+    if (!poll) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to create poll' } as ApiResponse,
+        { status: 500 }
+      );
+    }
+
+    // Get the created poll with options
+    const pollWithOptions = await db.polls.getById(poll.id);
+
     return NextResponse.json(
-      { success: true, data: { poll: mockPoll } } as ApiResponse<{ poll: Poll }>,
+      { 
+        success: true, 
+        data: { poll: pollWithOptions },
+        message: 'Poll created successfully'
+      } as ApiResponse<{ poll: typeof pollWithOptions }>,
       { status: 201 }
     );
   } catch (error) {

@@ -1,43 +1,21 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  createdAt: Date;
-  updatedAt: Date;
+// Re-export database types
+export * from './database';
+
+// Application-specific types that extend database types
+export interface User extends Profile {
+  // Additional application-specific user properties can be added here
 }
 
-export interface PollOption {
-  id: string;
-  text: string;
+export interface PollOptionWithVotes extends PollOption {
   votes: number;
-  pollId: string;
-  createdAt: Date;
 }
 
-export interface Poll {
-  id: string;
-  title: string;
-  description?: string;
-  isActive: boolean;
-  isPublic: boolean;
-  allowMultipleVotes: boolean;
-  expiresAt?: Date;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  options: PollOption[];
+export interface PollWithOptionsAndVotes extends Poll {
+  options: PollOptionWithVotes[];
   totalVotes: number;
 }
 
-export interface Vote {
-  id: string;
-  pollId: string;
-  optionId: string;
-  userId: string;
-  createdAt: Date;
-}
-
+// Form and API types
 export interface CreatePollData {
   title: string;
   description?: string;
@@ -79,3 +57,31 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
 }
+
+// Utility types for converting between database and application formats
+export interface PollFormData {
+  title: string;
+  description?: string;
+  isPublic: boolean;
+  allowMultipleVotes: boolean;
+  expiresAt?: string;
+  options: string[];
+}
+
+export interface VoteData {
+  pollId: string;
+  optionId: string;
+}
+
+// Type guards and utilities
+export const isPollActive = (poll: Poll): boolean => {
+  if (!poll.is_active) return false;
+  if (poll.expires_at && new Date(poll.expires_at) <= new Date()) return false;
+  return true;
+};
+
+export const canUserVoteOnPoll = (poll: Poll, userVotes: Vote[]): boolean => {
+  if (!isPollActive(poll)) return false;
+  if (!poll.allow_multiple_votes && userVotes.length > 0) return false;
+  return true;
+};

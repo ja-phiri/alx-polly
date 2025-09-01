@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Poll, ApiResponse } from '@/lib/types';
+import { ApiResponse } from '@/lib/types';
+import { createServerClient } from '@supabase/ssr';
 
 // POST /api/polls/[id]/vote - Vote on a poll
 export async function POST(
@@ -9,7 +10,7 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { optionId } = body;
+    const { optionId } = body as { optionId?: string };
 
     // Validate input
     if (!optionId) {
@@ -19,30 +20,103 @@ export async function POST(
       );
     }
 
-    // TODO: Implement actual authentication check
-    // TODO: Implement actual database operation to record vote
+    // Create authenticated Supabase client using request cookies (for RLS)
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // no-op for API route
+          },
+        },
+      }
+    );
 
-    // Mock updated poll data with incremented vote
-    const mockPoll: Poll = {
-      id,
-      title: 'What\'s your favorite programming language?',
-      description: 'Choose your preferred programming language for web development',
-      isActive: true,
-      isPublic: true,
-      allowMultipleVotes: false,
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      totalVotes: 16, // Incremented
-      options: [
-        { id: '1', text: 'JavaScript', votes: 8, pollId: id, createdAt: new Date() },
-        { id: '2', text: 'TypeScript', votes: 6, pollId: id, createdAt: new Date() }, // Incremented
-        { id: '3', text: 'Python', votes: 2, pollId: id, createdAt: new Date() },
-      ],
-    };
+    // Ensure user is authenticated
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' } as ApiResponse,
+        { status: 401 }
+      );
+    }
+
+    // Validate that option belongs to the poll
+    const { data: option, error: optionError } = await supabase
+      .from('poll_options')
+      .select('id, poll_id')
+      .eq('id', optionId)
+      .eq('poll_id', id)
+      .single();
+
+    if (optionError || !option) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid option for this poll' } as ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    // Check if user can vote (handles multiple vote rules and active state)
+    const { data: canVote, error: canVoteError } = await supabase.rpc('can_user_vote', {
+      poll_uuid: id,
+      user_uuid: user.id,
+    });
+
+    if (canVoteError) {
+      console.error('Error checking can_user_vote:', canVoteError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to validate vote' } as ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    if (!canVote) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot vote on this poll' } as ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    // Insert vote
+    const { error: insertError } = await supabase.from('votes').insert({
+      poll_id: id,
+      option_id: optionId,
+      user_id: user.id,
+    });
+
+    if (insertError) {
+      console.error('Error inserting vote:', insertError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to record vote' } as ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    // Fetch updated poll with options and vote counts
+    const { data: pollData, error: pollError } = await supabase.rpc('get_poll_with_options', {
+      poll_uuid: id,
+    });
+
+    if (pollError || !pollData || pollData.length === 0) {
+      console.error('Error fetching updated poll:', pollError);
+      return NextResponse.json(
+        { success: true, message: 'Vote recorded' } as ApiResponse,
+        { status: 200 }
+      );
+    }
+
+    const updatedPoll = pollData[0];
 
     return NextResponse.json(
-      { success: true, data: { poll: mockPoll } } as ApiResponse<{ poll: Poll }>,
+      { success: true, data: { poll: updatedPoll } } as ApiResponse,
       { status: 200 }
     );
   } catch (error) {

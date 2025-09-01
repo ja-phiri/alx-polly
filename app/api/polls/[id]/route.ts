@@ -1,42 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Poll, ApiResponse } from '@/lib/types';
+import { ApiResponse, UpdatePollData } from '@/lib/types';
+import { db } from '@/lib/db/supabase-utils';
+import { createServerClient } from '@supabase/ssr';
 
 // GET /api/polls/[id] - Get a specific poll
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
 
-    // TODO: Implement actual database query
-    // This is a placeholder that should be replaced with real database operations
-    
-    // Mock poll data
-    const mockPoll: Poll = {
-      id,
-      title: 'What\'s your favorite programming language?',
-      description: 'Choose your preferred programming language for web development',
-      isActive: true,
-      isPublic: true,
-      allowMultipleVotes: false,
-      createdBy: '1',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      totalVotes: 15,
-      options: [
-        { id: '1', text: 'JavaScript', votes: 8, pollId: id, createdAt: new Date() },
-        { id: '2', text: 'TypeScript', votes: 5, pollId: id, createdAt: new Date() },
-        { id: '3', text: 'Python', votes: 2, pollId: id, createdAt: new Date() },
-      ],
-    };
+    const poll = await db.polls.getById(id);
+
+    if (!poll) {
+      return NextResponse.json(
+        { success: false, error: 'Poll not found' } as ApiResponse,
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
-      { success: true, data: { poll: mockPoll } } as ApiResponse<{ poll: Poll }>,
+      { success: true, data: { poll } } as ApiResponse<{ poll: typeof poll }>,
       { status: 200 }
     );
   } catch (error) {
     console.error('Error fetching poll:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' } as ApiResponse,
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/polls/[id] - Update a poll (owner only)
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const body: UpdatePollData = await request.json();
+
+    // Create an authenticated Supabase client from request cookies for RLS
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // no-op
+          },
+        },
+      }
+    );
+
+    // Basic validation
+    if (
+      body.title === undefined &&
+      body.description === undefined &&
+      body.isActive === undefined &&
+      body.isPublic === undefined &&
+      body.allowMultipleVotes === undefined &&
+      body.expiresAt === undefined
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'No fields provided to update' } as ApiResponse,
+        { status: 400 }
+      );
+    }
+
+    const updated = await db.polls.update(id, body, supabase);
+
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to update poll' } as ApiResponse,
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: true, data: { poll: updated } } as ApiResponse,
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error updating poll:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' } as ApiResponse,
       { status: 500 }
