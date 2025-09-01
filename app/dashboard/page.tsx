@@ -1,10 +1,11 @@
-'use client'
+"use client";
 
-import { Navigation } from "@/components/navigation"
-import { ProtectedRoute } from "@/components/protected-route"
-import { DashboardStats } from "@/components/dashboard/dashboard-stats"
-import { UserPolls } from "@/components/dashboard/user-polls"
-import { RecentActivity } from "@/components/dashboard/recent-activity"
+import { Navigation } from "@/components/navigation";
+import { ProtectedRoute } from "@/components/protected-route";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import { UserPolls } from "@/components/dashboard/user-polls";
+import { RecentActivity } from "@/components/dashboard/recent-activity";
+import { ChartShowcase } from "@/components/dashboard/chart-showcase";
 
 export default function DashboardPage() {
   return (
@@ -18,10 +19,12 @@ export default function DashboardPage() {
               Welcome back! Here's an overview of your polling activity.
             </p>
           </div>
-          
+
           <div className="grid gap-8">
             <DashboardStats />
-            
+
+            <ChartShowcase />
+
             <div className="grid gap-8 md:grid-cols-2">
               <UserPolls />
               <RecentActivity />
@@ -30,7 +33,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
-
-

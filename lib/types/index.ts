@@ -1,5 +1,8 @@
 // Re-export database types
-export * from './database';
+export * from "./database";
+
+// Import types for local use
+import { Profile, Poll, PollOption, Vote } from "./database";
 
 // Application-specific types that extend database types
 export interface User extends Profile {
@@ -71,6 +74,27 @@ export interface PollFormData {
 export interface VoteData {
   pollId: string;
   optionId: string;
+}
+
+export interface EditPollData {
+  id: string;
+  title: string;
+  description: string;
+  is_public: boolean;
+  is_active: boolean;
+  allow_multiple_votes: boolean;
+  expires_at: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  options: Array<{
+    id?: string;
+    option_id?: string;
+    text: string;
+    poll_id: string;
+    created_at?: string;
+    updated_at?: string;
+  }>;
 }
 
 // Type guards and utilities

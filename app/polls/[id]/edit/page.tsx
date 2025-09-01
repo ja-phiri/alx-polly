@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
-import { ApiResponse, UpdatePollData } from '@/lib/types'
+import { ApiResponse, UpdatePollData, EditPollData } from '@/lib/types'
 import { toast } from 'sonner'
 import { db } from '@/lib/db/supabase-utils'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
@@ -36,9 +36,9 @@ export default function EditPollPage() {
       setLoading(true)
       try {
         const res = await fetch(`/api/polls/${id}`)
-        const json: ApiResponse<{ poll: any }> = await res.json()
+        const json: ApiResponse<{ poll: EditPollData }> = await res.json()
         if (!res.ok || !json.success || !json.data?.poll) throw new Error(json.error || 'Failed to load poll')
-        const p = json.data.poll
+        const p: EditPollData = json.data.poll
         setTitle(p.title || '')
         setDescription(p.description || '')
         setIsPublic(!!p.is_public)
@@ -47,7 +47,7 @@ export default function EditPollPage() {
         setExpiresAt(p.expires_at ? new Date(p.expires_at).toISOString().slice(0, 16) : '')
         const opts = Array.isArray(p.options) ? p.options : []
         setOptions(
-          opts.map((o: any) => ({ id: o.id || o.option_id, text: o.text }))
+          opts.map((o) => ({ id: o.id || o.option_id, text: o.text }))
         )
       } catch (e) {
         console.error('Failed to load poll:', e)
